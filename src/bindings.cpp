@@ -90,6 +90,30 @@ std::vector<Point> shapeRefPolygonPoints(const ShapeRef& shape) {
     return polygonToPoints(shape.polygon());
 }
 
+ConnRef* makeConnRefFromRouter(Router* router) {
+    return new ConnRef(router);
+}
+
+ConnRef* makeConnRefFromRouterAndEndpoints(Router* router,
+                                           const ConnEnd& src,
+                                           const ConnEnd& dst) {
+    return new ConnRef(router, src, dst);
+}
+
+// ConnEnd helper constructors since Embind can't distinguish overloads
+// based on parameter type alone
+ConnEnd* makeConnEndFromPoint(const Point& p) {
+    return new ConnEnd(p);
+}
+
+ConnEnd* makeConnEndFromPointWithDir(const Point& p, unsigned int dirs) {
+    return new ConnEnd(p, dirs);
+}
+
+ConnEnd* makeConnEndFromShape(ShapeRef* shape, unsigned int id) {
+    return new ConnEnd(shape, id);
+}
+
 // --- Checkpoints ---------------------------------------------------------
 // Checkpoint's fields are public and simple, but embind's value_object
 // can't hold a nested non-primitive (Point) cleanly across the JS/wasm
@@ -145,14 +169,10 @@ EMSCRIPTEN_BINDINGS(libavoid) {
         .value("NudgeSharedPathsWithCommonEndPoint",
                nudgeSharedPathsWithCommonEndPoint);
 
-    // --- Point -------------------------------------------------------------
-    value_object<Point>("PointValue")
-        .field("x", &Point::x)
-        .field("y", &Point::y);
-
-    // We also expose a constructible Point class (embind's value_object is
-    // read/write-only for plain data; this class_ overload lets JS `new`
-    // one and pass it into APIs that expect an Avoid::Point by value).
+    // --- Point ---------------------------------------------------------------
+    // Expose a constructible Point class that can be used from JavaScript.
+    // Embind doesn't allow registering the same C++ type twice, so we only
+    // expose it as a class_ (not as a value_object as well).
     class_<Point>("Point")
         .constructor<double, double>()
         .property("x", &Point::x)
@@ -185,11 +205,13 @@ EMSCRIPTEN_BINDINGS(libavoid) {
 
     register_vector<Checkpoint>("CheckpointVector");
 
-    // --- ConnEnd -------------------------------------------------------------
+    // --- ConnEnd -------------------------------------------------------
+    // Use helper functions for ConnEnd constructors since Embind can't
+    // distinguish overloads based on parameter type alone
     class_<ConnEnd>("ConnEnd")
-        .constructor<const Point&>()
-        .constructor<const Point&, unsigned int>()
-        .constructor<ShapeRef*, unsigned int>();
+        .constructor(&makeConnEndFromPoint, allow_raw_pointers())
+        .class_function("atPointWithDirs", &makeConnEndFromPointWithDir, allow_raw_pointers())
+        .class_function("atShape", &makeConnEndFromShape, allow_raw_pointers());
 
     // --- ShapeRef --------------------------------------------------------
     class_<ShapeRef>("ShapeRef")
@@ -197,7 +219,6 @@ EMSCRIPTEN_BINDINGS(libavoid) {
         .class_function("fromRect", &makeShapeRefFromRect, allow_raw_pointers())
         .function("polygonPoints", &shapeRefPolygonPoints);
 
-    // --- ConnRef -----------------------------------------------------------
     // --- Router ------------------------------------------------------------
     class_<Router>("Router")
         .constructor<unsigned int>()
@@ -211,6 +232,9 @@ EMSCRIPTEN_BINDINGS(libavoid) {
         .function("processTransaction", &Router::processTransaction)
         .function("deleteShape", &Router::deleteShape, allow_raw_pointers())
         .function("deleteConnector", &Router::deleteConnector, allow_raw_pointers())
+        .function("addRectangle", &Router::addRectangle, allow_raw_pointers())
+        .function("addShape", &Router::addShape, allow_raw_pointers())
+        .function("addConnector", &Router::addConnector, allow_raw_pointers())
         .function("moveShapeTo",
                    select_overload<void(ShapeRef*, const Polygon&, const bool)>(
                        &Router::moveShape),
@@ -222,8 +246,8 @@ EMSCRIPTEN_BINDINGS(libavoid) {
 
     // --- ConnRef -----------------------------------------------------------
     class_<ConnRef>("ConnRef")
-        .constructor<Router*>(allow_raw_pointers())
-        .constructor<Router*, const ConnEnd&, const ConnEnd&>(allow_raw_pointers())
+        .constructor(&makeConnRefFromRouter, allow_raw_pointers())
+        .constructor(&makeConnRefFromRouterAndEndpoints, allow_raw_pointers())
         .function("id", &ConnRef::id)
         .function("setEndpoints", &ConnRef::setEndpoints)
         .function("setSourceEndpoint", &ConnRef::setSourceEndpoint)

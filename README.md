@@ -41,18 +41,15 @@ everything the router still owns.
 ## Building from source
 
 ```bash
-git clone https://github.com/YOUR_GH_USER/libavoid-wasm.git
+git clone https://github.com/nik5346/libavoid-wasm.git
 cd libavoid-wasm
 npm install
 
 # 1. Fetch libavoid's C++ source (LGPL-2.1-or-later, Monash University)
 npm run fetch:adaptagrams
 
-# 2. Install/activate emsdk if you haven't already
-git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
-~/emsdk/emsdk install latest
-~/emsdk/emsdk activate latest
-source ~/emsdk/emsdk_env.sh
+# 2. Install Emscripten automatically (or run it explicitly if preferred)
+npm run install:emscripten
 
 # 3. Build the wasm module + TypeScript wrapper
 npm run build
@@ -60,6 +57,25 @@ npm run build
 # 4. Run tests
 npm test
 ```
+
+## React block-diagram example
+
+A runnable React/Vite demo lives in [examples/react-block-diagram](examples/react-block-diagram). It shows how to:
+
+- create and delete nodes as rectangular obstacles
+- create and move ports and edges
+- let libavoid recompute connector routes in real time as the diagram changes
+
+Run it from the repo root:
+
+```bash
+cd examples/react-block-diagram
+npm install
+npm run dev
+```
+
+Then open the local Vite URL in your browser.
+
 ## Architecture
 
 - `src/bindings.cpp` — Embind glue exposing the C++ classes to JS. This is
@@ -68,7 +84,9 @@ npm test
 - `ts/index.ts` — the ergonomic wrapper most consumers should use: plain
   `{x, y}` objects instead of Embind vectors, explicit `dispose()` instead
   of manual `.delete()` bookkeeping, enums instead of magic numbers.
-- `scripts/fetch-adaptagrams.sh` — vendors a pinned libavoid revision into
+- `scripts/fetch_adaptagrams.py` — vendors a pinned libavoid revision into
   `third_party/adaptagrams` (gitignored, fetched at build time rather than
   committed).
-- `scripts/build-wasm.sh` — the `emcc` invocation.
+- `scripts/build_wasm.py` — the `emcc` invocation.
+- `scripts/install_emscripten.py` — installs Emscripten automatically when
+  needed.

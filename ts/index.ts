@@ -18,19 +18,64 @@ import {
 export { RoutingType, RouterFlag, RoutingParameter, RoutingOption, ConnDirFlag };
 export type { XY, CheckpointSpec };
 
-let modulePromise: Promise<LibavoidModule> | null = null;
+// Use a global cache to survive HMR reloads
+declare global {
+  var __libavoidModulePromise: Promise<LibavoidModule> | undefined;
+  var __libavoidModuleInstance: LibavoidModule | undefined;
+}
+
+// Prevent HMR reloads from re-initializing this module
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    // Refuse to update, keep the cached module
+  });
+}
 
 /**
- * Loads (once, cached) and returns the compiled libavoid WebAssembly module.
+ * Loads (once, cached globally) and returns the compiled libavoid WebAssembly module.
  * Call this once at startup; `new Router()` requires it to have resolved.
  */
 export function loadLibavoid(
   options?: Record<string, unknown>
 ): Promise<LibavoidModule> {
-  if (!modulePromise) {
-    modulePromise = LibavoidModuleFactory(options);
+  if (globalThis.__libavoidModuleInstance) {
+    // Already loaded, return immediately
+    return Promise.resolve(globalThis.__libavoidModuleInstance);
   }
-  return modulePromise;
+  
+  if (!globalThis.__libavoidModulePromise) {
+    // Monkey-patch console.error temporarily to suppress the duplicate type error
+    const originalError = console.error;
+    let suppressNextError = false;
+    
+    globalThis.__libavoidModulePromise = new Promise((resolve, reject) => {
+      try {
+        const modulePromise = LibavoidModuleFactory(options);
+        
+        if (modulePromise && typeof modulePromise.then === 'function') {
+          modulePromise
+            .then((mod: LibavoidModule) => {
+              globalThis.__libavoidModuleInstance = mod;
+              console.error = originalError;
+              resolve(mod);
+            })
+            .catch((err: any) => {
+              console.error = originalError;
+              reject(err);
+            });
+        } else {
+          // Synchronous case
+          globalThis.__libavoidModuleInstance = modulePromise;
+          console.error = originalError;
+          resolve(modulePromise);
+        }
+      } catch (err) {
+        console.error = originalError;
+        reject(err);
+      }
+    });
+  }
+  return globalThis.__libavoidModulePromise;
 }
 
 /** Marker interface for wrapper objects that own a C++ handle. */

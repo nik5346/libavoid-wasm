@@ -44,8 +44,9 @@
     "README.md"
   ],
   "scripts": {
-    "fetch:adaptagrams": "bash scripts/fetch-adaptagrams.sh",
-    "build:wasm": "bash scripts/build-wasm.sh",
+    "fetch:adaptagrams": "python scripts/fetch_adaptagrams.py",
+    "install:emscripten": "python scripts/install_emscripten.py",
+    "build:wasm": "python scripts/build_wasm.py",
     "build:ts": "tsup ts/index.ts --format esm,cjs --dts --out-dir dist --clean=false",
     "build": "npm run build:wasm && npm run build:ts",
     "test": "vitest run",

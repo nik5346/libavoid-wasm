@@ -3,3 +3,4 @@ dist/
 third_party/
 *.log
 .DS_Store
+emsdk/
