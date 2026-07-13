@@ -32,7 +32,7 @@ export enum RoutingParameter {
 /** Boolean routing behaviours that can be toggled on a Router. */
 export enum RoutingOption {
   NudgeOrthogonalSegmentsConnectedToShapes = 0,
-  ImproveHyperedgeRoutesMovingAddedAndDeletedEndpoints = 1,
+  ImproveHyperedgeRoutesMovingAddingAndDeletingJunctions = 1,
   PenaliseOrthogonalSharedPathsAtConnEnds = 2,
   NudgeOrthogonalTouchingColinearSegments = 3,
   PerformUnifyingNudgingPreprocessingStep = 4,

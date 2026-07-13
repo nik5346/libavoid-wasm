@@ -132,8 +132,8 @@ EMSCRIPTEN_BINDINGS(libavoid) {
     enum_<RoutingOption>("RoutingOption")
         .value("NudgeOrthogonalSegmentsConnectedToShapes",
                nudgeOrthogonalSegmentsConnectedToShapes)
-        .value("ImproveHyperedgeRoutesMovingAddedAndDeletedEndpoints",
-               improveHyperedgeRoutesMovingAddedAndDeletedEndpoints)
+         .value("ImproveHyperedgeRoutesMovingAddingAndDeletingJunctions",
+             improveHyperedgeRoutesMovingAddingAndDeletingJunctions)
         .value("PenaliseOrthogonalSharedPathsAtConnEnds",
                penaliseOrthogonalSharedPathsAtConnEnds)
         .value("NudgeOrthogonalTouchingColinearSegments",
@@ -198,23 +198,6 @@ EMSCRIPTEN_BINDINGS(libavoid) {
         .function("polygonPoints", &shapeRefPolygonPoints);
 
     // --- ConnRef -----------------------------------------------------------
-    class_<ConnRef>("ConnRef")
-        .constructor<Router*>(allow_raw_pointers())
-        .constructor<Router*, const ConnEnd&, const ConnEnd&>(allow_raw_pointers())
-        .function("id", &ConnRef::id)
-        .function("setEndpoints", &ConnRef::setEndpoints)
-        .function("setSourceEndpoint", &ConnRef::setSourceEndpoint)
-        .function("setDestEndpoint", &ConnRef::setDestEndpoint)
-        .function("needsRepaint", &ConnRef::needsRepaint)
-        .function("routePoints", &connRefRoutePoints)
-        .function("displayRoutePoints", &connRefDisplayRoutePoints)
-        .function("routingType", &ConnRef::routingType)
-        .function("setRoutingType", &ConnRef::setRoutingType)
-        .function("hasFixedRoute", &ConnRef::hasFixedRoute)
-        .function("clearFixedRoute", &ConnRef::clearFixedRoute)
-        .function("setRoutingCheckpoints", &ConnRef::setRoutingCheckpoints)
-        .function("routingCheckpoints", &ConnRef::routingCheckpoints);
-
     // --- Router ------------------------------------------------------------
     class_<Router>("Router")
         .constructor<unsigned int>()
@@ -236,4 +219,22 @@ EMSCRIPTEN_BINDINGS(libavoid) {
                    select_overload<void(ShapeRef*, const double, const double)>(
                        &Router::moveShape),
                    allow_raw_pointers());
+
+    // --- ConnRef -----------------------------------------------------------
+    class_<ConnRef>("ConnRef")
+        .constructor<Router*>(allow_raw_pointers())
+        .constructor<Router*, const ConnEnd&, const ConnEnd&>(allow_raw_pointers())
+        .function("id", &ConnRef::id)
+        .function("setEndpoints", &ConnRef::setEndpoints)
+        .function("setSourceEndpoint", &ConnRef::setSourceEndpoint)
+        .function("setDestEndpoint", &ConnRef::setDestEndpoint)
+        .function("needsRepaint", &ConnRef::needsRepaint)
+        .function("routePoints", &connRefRoutePoints)
+        .function("displayRoutePoints", &connRefDisplayRoutePoints)
+        .function("routingType", &ConnRef::routingType)
+        .function("setRoutingType", &ConnRef::setRoutingType)
+        .function("hasFixedRoute", &ConnRef::hasFixedRoute)
+        .function("clearFixedRoute", &ConnRef::clearFixedRoute)
+        .function("setRoutingCheckpoints", &ConnRef::setRoutingCheckpoints)
+        .function("routingCheckpoints", &ConnRef::routingCheckpoints);
 }

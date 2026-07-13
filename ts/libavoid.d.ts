@@ -93,7 +93,7 @@ export const enum RoutingParameter {
 
 export const enum RoutingOption {
   NudgeOrthogonalSegmentsConnectedToShapes = 0,
-  ImproveHyperedgeRoutesMovingAddedAndDeletedEndpoints = 1,
+  ImproveHyperedgeRoutesMovingAddingAndDeletingJunctions = 1,
   PenaliseOrthogonalSharedPathsAtConnEnds = 2,
   NudgeOrthogonalTouchingColinearSegments = 3,
   PerformUnifyingNudgingPreprocessingStep = 4,
