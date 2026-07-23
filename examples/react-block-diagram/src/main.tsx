@@ -58,15 +58,16 @@ type LinkingState = {
 const PORT_SIDES = ['top', 'bottom', 'left', 'right'] as const;
 
 function getPortPosition(node: Node, side: 'top' | 'bottom' | 'left' | 'right'): XY {
+  const padding = 8;
   switch (side) {
     case 'top':
-      return { x: node.x + node.width / 2, y: node.y };
+      return { x: node.x + node.width / 2, y: node.y - padding };
     case 'bottom':
-      return { x: node.x + node.width / 2, y: node.y + node.height };
+      return { x: node.x + node.width / 2, y: node.y + node.height + padding };
     case 'left':
-      return { x: node.x, y: node.y + node.height / 2 };
+      return { x: node.x - padding, y: node.y + node.height / 2 };
     case 'right':
-      return { x: node.x + node.width, y: node.y + node.height / 2 };
+      return { x: node.x + node.width + padding, y: node.y + node.height / 2 };
   }
 }
 
