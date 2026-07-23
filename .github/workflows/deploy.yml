@@ -1,0 +1,52 @@
+name: Deploy Example to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Fetch adaptagrams source
+        run: npm run fetch:adaptagrams
+        env:
+          ADAPTAGRAMS_REF: master
+
+      - name: Set up emsdk
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+
+      - name: Build WASM module and TS wrappers
+        run: npm run build
+
+      - name: Install example app dependencies
+        run: |
+          cd examples/react-block-diagram
+          npm ci
+
+      - name: Build example app
+        run: |
+          cd examples/react-block-diagram
+          npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: examples/react-block-diagram/dist
+          branch: gh-pages
