@@ -47,13 +47,13 @@
     "fetch:adaptagrams": "python scripts/fetch_adaptagrams.py",
     "install:emscripten": "python scripts/install_emscripten.py",
     "build:wasm": "python scripts/build_wasm.py",
-    "build:ts": "tsup ts/index.ts --format esm,cjs --dts --out-dir dist --clean=false",
+    "build:ts": "esbuild ts/index.ts --bundle --format=esm --outfile=dist/index.js --external:node:module && esbuild ts/index.ts --bundle --format=cjs --outfile=dist/index.cjs --external:node:module --log-override:empty-import-meta=silent && tsc --emitDeclarationOnly",
     "build": "npm run build:wasm && npm run build:ts",
     "test": "vitest run",
     "prepublishOnly": "npm run build && npm test"
   },
   "devDependencies": {
-    "tsup": "^8.3.0",
+    "esbuild": "^0.28.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.0"
   },
