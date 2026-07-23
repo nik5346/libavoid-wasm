@@ -1,11 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-
-// Dynamically import the libavoid WASM module from dist
-const loadLibavoidModule = async () => {
-  const mod = await import('../../../dist/libavoid.js');
-  return await mod.default();
-};
+import { loadLibavoid, Router, ConnEnd, RouterFlag, RoutingType } from 'libavoid-wasm';
 
 type Module = any;
 
@@ -49,14 +44,14 @@ function App() {
   const [ports, setPorts] = useState<Port[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
-  const [router, setRouter] = useState<any>(null);
+  const [router, setRouter] = useState<Router | null>(null);
   const [module, setModule] = useState<Module | null>(null);
   const [ready, setReady] = useState(false);
   const dragState = useRef<DragState | null>(null);
 
   const rerender = () => setNodes((current) => [...current]);
 
-  const createNode = (r: any, mod: Module, x: number, y: number, label: string, id: number): Node => {
+  const createNode = (r: Router, mod: Module, x: number, y: number, label: string, id: number): Node => {
     const shape = r.addRectangle({ x, y }, { x: x + NODE_SIZE.width, y: y + NODE_SIZE.height }, id);
     return { id, x, y, width: NODE_SIZE.width, height: NODE_SIZE.height, label, shape };
   };
@@ -68,7 +63,7 @@ function App() {
       side: 'left' as const,
       x: node.x,
       y: node.y + node.height / 2,
-      connEnd: new mod.ConnEnd(new mod.Point(node.x, node.y + node.height / 2)),
+      connEnd: ConnEnd.atPoint(mod, { x: node.x, y: node.y + node.height / 2 }),
     };
     const right = {
       id: `${node.id}-right`,
@@ -76,24 +71,24 @@ function App() {
       side: 'right' as const,
       x: node.x + node.width,
       y: node.y + node.height / 2,
-      connEnd: new mod.ConnEnd(new mod.Point(node.x + node.width, node.y + node.height / 2)),
+      connEnd: ConnEnd.atPoint(mod, { x: node.x + node.width, y: node.y + node.height / 2 }),
     };
     return [left, right];
   };
 
-  const createEdge = (r: any, src: Port, dst: Port): Edge => {
+  const createEdge = (r: Router, src: Port, dst: Port): Edge => {
     const connector = r.addConnector(src.connEnd, dst.connEnd);
-    connector.setRoutingType(1); // Orthogonal
+    connector.setRoutingType(RoutingType.Orthogonal);
     return { id: `${src.id}-${dst.id}`, source: src.id, target: dst.id, connector };
   };
 
-  const refreshPortsForNodes = (nextNodes: Node[], nextPorts: Port[]) => {
+  const refreshPortsForNodes = (nextNodes: Node[], nextPorts: Port[], mod: Module) => {
     const freshPorts = nextNodes.flatMap((node) => {
       const existing = nextPorts.filter((p) => p.nodeId === node.id);
       if (existing.length) {
         return existing.map((port) => ({ ...port, x: port.side === 'left' ? node.x : node.x + node.width, y: node.y + node.height / 2 }));
       }
-      return createPortsForNode(node, module!);
+      return createPortsForNode(node, mod);
     });
     return freshPorts;
   };
@@ -106,9 +101,9 @@ function App() {
 
   useEffect(() => {
     let canceled = false;
-    loadLibavoidModule().then((mod) => {
+    loadLibavoid().then((mod) => {
       if (canceled) return;
-      const r = new mod.Router(1); // OrthogonalRouting
+      const r = new Router(mod, RouterFlag.OrthogonalRouting);
       r.setRoutingOption(4, true); // ImproveHyperedgeRoutesMovingAddingAndDeletingJunctions
       setModule(mod);
       setRouter(r);
@@ -117,7 +112,7 @@ function App() {
         createNode(r, mod, 80, 80, 'Input', 1),
         createNode(r, mod, 320, 80, 'Process', 2),
       ];
-      const initialPorts = refreshPortsForNodes(initialNodes, []);
+      const initialPorts = refreshPortsForNodes(initialNodes, [], mod);
       setNodes(initialNodes);
       setPorts(initialPorts);
       setEdges([createEdge(r, initialPorts[1], initialPorts[3])]);
@@ -133,7 +128,7 @@ function App() {
     const id = Date.now();
     const node = createNode(router, module, 120 + nodes.length * 80, 120, `Node ${nodes.length + 1}`, id);
     const nextNodes = [...nodes, node];
-    const nextPorts = refreshPortsForNodes(nextNodes, ports);
+    const nextPorts = refreshPortsForNodes(nextNodes, ports, module);
     setNodes(nextNodes);
     setPorts(nextPorts);
     commitLayout();
@@ -153,7 +148,7 @@ function App() {
     });
 
     for (const port of ports.filter((entry) => entry.nodeId === selectedNodeId)) {
-      port.connEnd.delete();
+      port.connEnd.dispose();
     }
     for (const edge of edges.filter((entry) => entry.source.startsWith(`${selectedNodeId}-`) || entry.target.startsWith(`${selectedNodeId}-`))) {
       router.deleteConnector(edge.connector);
@@ -186,11 +181,11 @@ function App() {
     if (!otherPort || !module) return;
     const src = edge.source === updatedPort.id ? updatedPort : otherPort;
     const dst = edge.target === updatedPort.id ? updatedPort : otherPort;
-    const srcEnd = new module.ConnEnd(new module.Point(src.x, src.y));
-    const dstEnd = new module.ConnEnd(new module.Point(dst.x, dst.y));
+    const srcEnd = ConnEnd.atPoint(module, { x: src.x, y: src.y });
+    const dstEnd = ConnEnd.atPoint(module, { x: dst.x, y: dst.y });
     edge.connector.setEndpoints(srcEnd, dstEnd);
-    srcEnd.delete();
-    dstEnd.delete();
+    srcEnd.dispose();
+    dstEnd.dispose();
   };
 
   const handlePointerMove = (event: React.PointerEvent<SVGSVGElement>) => {
@@ -207,7 +202,7 @@ function App() {
       const nextX = x - dragState.current.offsetX;
       const nextY = y - dragState.current.offsetY;
       const nextNodes = nodes.map((entry) => (entry.id === id ? { ...entry, x: nextX, y: nextY } : entry));
-      const nextPorts = refreshPortsForNodes(nextNodes, ports);
+      const nextPorts = refreshPortsForNodes(nextNodes, ports, module);
       setNodes(nextNodes);
       setPorts(nextPorts);
 
@@ -216,11 +211,11 @@ function App() {
         const sourcePort = nextPorts.find((port) => port.id === edge.source);
         const targetPort = nextPorts.find((port) => port.id === edge.target);
         if (sourcePort && targetPort) {
-          const srcEnd = new module.ConnEnd(new module.Point(sourcePort.x, sourcePort.y));
-          const dstEnd = new module.ConnEnd(new module.Point(targetPort.x, targetPort.y));
+          const srcEnd = ConnEnd.atPoint(module, { x: sourcePort.x, y: sourcePort.y });
+          const dstEnd = ConnEnd.atPoint(module, { x: targetPort.x, y: targetPort.y });
           edge.connector.setEndpoints(srcEnd, dstEnd);
-          srcEnd.delete();
-          dstEnd.delete();
+          srcEnd.dispose();
+          dstEnd.dispose();
         }
       }
       router.processTransaction();
@@ -268,7 +263,7 @@ function App() {
           const targetPort = ports.find((p) => p.id === edge.target);
           if (!sourcePort || !targetPort) return null;
 
-          const route = edge.connector.displayRoutePoints?.() || [];
+          const route = edge.connector.route() || [];
           if (route.length === 0) {
             return (
               <line

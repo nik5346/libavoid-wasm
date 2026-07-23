@@ -17,7 +17,7 @@ import {
 } from "./types.js";
 
 export { RoutingType, RouterFlag, RoutingParameter, RoutingOption, ConnDirFlag };
-export type { XY, CheckpointSpec };
+export type { XY, CheckpointSpec, LibavoidModule };
 
 // Use a global cache to survive HMR reloads
 declare global {
@@ -120,7 +120,9 @@ export class Shape implements Disposable {
 
   dispose(): void {
     if (this.disposed) return;
-    this.handle.delete();
+    // C++ ShapeRef is owned and deleted by the Router, so we must not call
+    // this.handle.delete() directly (which invokes the C++ destructor).
+    // Doing so triggers assertions in libavoid's destructor and aborts.
     this.disposed = true;
   }
 }
@@ -242,7 +244,9 @@ export class Connector implements Disposable {
 
   dispose(): void {
     if (this.disposed) return;
-    this.handle.delete();
+    // C++ ConnRef is owned and deleted by the Router, so we must not call
+    // this.handle.delete() directly (which invokes the C++ destructor).
+    // Doing so triggers assertions in libavoid's destructor and aborts.
     this.disposed = true;
   }
 }
