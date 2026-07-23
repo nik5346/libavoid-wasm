@@ -52,7 +52,7 @@ export interface EmbindConnEnd {
 }
 
 export interface EmbindShapeRef {
-  polygonPoints(): { x: number; y: number }[];
+  polygonPoints(): EmbindPointVector;
   delete(): void;
 }
 
@@ -68,8 +68,8 @@ export interface EmbindConnRef {
   setSourceEndpoint(src: EmbindConnEnd): void;
   setDestEndpoint(dst: EmbindConnEnd): void;
   needsRepaint(): boolean;
-  routePoints(): { x: number; y: number }[];
-  displayRoutePoints(): { x: number; y: number }[];
+  routePoints(): EmbindPointVector;
+  displayRoutePoints(): EmbindPointVector;
   routingType(): RoutingType;
   setRoutingType(type: RoutingType): void;
   hasFixedRoute(): boolean;
@@ -163,7 +163,7 @@ export interface LibavoidModule {
     new (flags: number): EmbindRouter;
   };
   polygonFromPoints(points: EmbindPointVector): EmbindPolygon;
-  polygonToPoints(polygon: EmbindPolygon): { x: number; y: number }[];
+  polygonToPoints(polygon: EmbindPolygon): EmbindPointVector;
 }
 
 declare function LibavoidModuleFactory(

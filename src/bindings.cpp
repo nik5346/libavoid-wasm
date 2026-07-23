@@ -232,9 +232,6 @@ EMSCRIPTEN_BINDINGS(libavoid) {
         .function("processTransaction", &Router::processTransaction)
         .function("deleteShape", &Router::deleteShape, allow_raw_pointers())
         .function("deleteConnector", &Router::deleteConnector, allow_raw_pointers())
-        .function("addRectangle", &Router::addRectangle, allow_raw_pointers())
-        .function("addShape", &Router::addShape, allow_raw_pointers())
-        .function("addConnector", &Router::addConnector, allow_raw_pointers())
         .function("moveShapeTo",
                    select_overload<void(ShapeRef*, const Polygon&, const bool)>(
                        &Router::moveShape),

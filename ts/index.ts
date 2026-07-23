@@ -4,6 +4,7 @@ import LibavoidModuleFactory, {
   type EmbindShapeRef,
   type EmbindConnRef,
   type EmbindConnEnd,
+  type EmbindPointVector,
 } from "./libavoid.js";
 import {
   RoutingType,
@@ -22,6 +23,15 @@ export type { XY, CheckpointSpec };
 declare global {
   var __libavoidModulePromise: Promise<LibavoidModule> | undefined;
   var __libavoidModuleInstance: LibavoidModule | undefined;
+
+  // Vite's import.meta.hot isn't part of the standard ImportMeta type;
+  // declare it as optional so this compiles under plain tsc/other bundlers
+  // too, without depending on "vite/client" ambient types.
+  interface ImportMeta {
+    hot?: {
+      accept(cb?: (mod: unknown) => void): void;
+    };
+  }
 }
 
 // Prevent HMR reloads from re-initializing this module
@@ -44,36 +54,12 @@ export function loadLibavoid(
   }
   
   if (!globalThis.__libavoidModulePromise) {
-    // Monkey-patch console.error temporarily to suppress the duplicate type error
-    const originalError = console.error;
-    let suppressNextError = false;
-    
-    globalThis.__libavoidModulePromise = new Promise((resolve, reject) => {
-      try {
-        const modulePromise = LibavoidModuleFactory(options);
-        
-        if (modulePromise && typeof modulePromise.then === 'function') {
-          modulePromise
-            .then((mod: LibavoidModule) => {
-              globalThis.__libavoidModuleInstance = mod;
-              console.error = originalError;
-              resolve(mod);
-            })
-            .catch((err: any) => {
-              console.error = originalError;
-              reject(err);
-            });
-        } else {
-          // Synchronous case
-          globalThis.__libavoidModuleInstance = modulePromise;
-          console.error = originalError;
-          resolve(modulePromise);
-        }
-      } catch (err) {
-        console.error = originalError;
-        reject(err);
+    globalThis.__libavoidModulePromise = LibavoidModuleFactory(options).then(
+      (mod) => {
+        globalThis.__libavoidModuleInstance = mod;
+        return mod;
       }
-    });
+    );
   }
   return globalThis.__libavoidModulePromise;
 }
@@ -85,6 +71,26 @@ interface Disposable {
 
 function disposeAll(items: Disposable[]): void {
   for (const item of items) item.dispose();
+}
+
+/**
+ * Converts an Embind point-vector handle (which exposes `.size()`/`.get()`,
+ * not a real JS array) into a plain array of `{x, y}` objects, then frees
+ * the vector handle. Every Embind function that returns `std::vector<Point>`
+ * (routePoints, displayRoutePoints, polygonPoints, ...) needs this — it is
+ * NOT automatically converted to a JS array despite what old type
+ * declarations may have claimed.
+ */
+function pointVectorToArray(vec: EmbindPointVector): XY[] {
+  const out: XY[] = [];
+  const size = vec.size();
+  for (let i = 0; i < size; i++) {
+    const p = vec.get(i);
+    out.push({ x: p.x, y: p.y });
+    p.delete();
+  }
+  vec.delete();
+  return out;
 }
 
 /**
@@ -109,7 +115,7 @@ export class Shape implements Disposable {
 
   /** The current boundary polygon of this shape, as plain {x, y} points. */
   polygonPoints(): XY[] {
-    return this.handle.polygonPoints();
+    return pointVectorToArray(this.handle.polygonPoints());
   }
 
   dispose(): void {
@@ -189,12 +195,12 @@ export class Connector implements Disposable {
 
   /** The final, display-ready route (simplified, nudged, corners applied). */
   route(): XY[] {
-    return this.handle.displayRoutePoints();
+    return pointVectorToArray(this.handle.displayRoutePoints());
   }
 
   /** The raw shortest-path route, before nudging / corner post-processing. */
   rawRoute(): XY[] {
-    return this.handle.routePoints();
+    return pointVectorToArray(this.handle.routePoints());
   }
 
   /**
