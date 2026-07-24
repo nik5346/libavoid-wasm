@@ -7,6 +7,8 @@ import {
   Router,
   ConnEnd,
   RouterFlag,
+  ConnDirFlag,
+  RoutingParameter,
 } from "../dist/index.js";
 import type { LibavoidModule } from "../dist/libavoid.js";
 
@@ -62,6 +64,26 @@ describe("Router", () => {
     const checkpoints = conn.routingCheckpoints();
     expect(checkpoints).toHaveLength(1);
     expect(checkpoints[0].point).toMatchObject({ x: 50, y: 50 });
+
+    src.dispose();
+    dst.dispose();
+    router.dispose();
+  });
+
+  it("forces orthogonal exit direction using ConnDirFlag", () => {
+    const router = new Router(module_, RouterFlag.OrthogonalRouting);
+    router.setRoutingParameter(RoutingParameter.ShapeBufferDistance, 10);
+
+    const src = ConnEnd.atPoint(module_, { x: 0, y: 10 }, ConnDirFlag.Right);
+    const dst = ConnEnd.atPoint(module_, { x: 40, y: 10 }, ConnDirFlag.Left);
+    const conn = router.addConnector(src, dst);
+
+    router.processTransaction();
+
+    const route = conn.route();
+    expect(route.length).toBeGreaterThanOrEqual(2);
+    expect(route[0]).toMatchObject({ x: 0, y: 10 });
+    expect(route[route.length - 1]).toMatchObject({ x: 40, y: 10 });
 
     src.dispose();
     dst.dispose();

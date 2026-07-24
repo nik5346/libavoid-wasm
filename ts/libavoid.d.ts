@@ -145,6 +145,7 @@ export interface LibavoidModule {
     new (point: EmbindPoint): EmbindConnEnd;
     new (point: EmbindPoint, visDirs: number): EmbindConnEnd;
     new (shape: EmbindShapeRef, connectionPinClassId: number): EmbindConnEnd;
+    atPointWithDirs(point: EmbindPoint, visDirs: number): EmbindConnEnd;
   };
   ShapeRef: {
     new (router: EmbindRouter, points: EmbindPointVector, id: number): EmbindShapeRef;

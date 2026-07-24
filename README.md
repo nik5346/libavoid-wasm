@@ -60,6 +60,8 @@ npm test
 
 ## React block-diagram example
 
+An online, interactive version of this demo is hosted on [GitHub Pages](https://nik5346.github.io/libavoid-wasm/).
+
 A runnable React/Vite demo lives in [examples/react-block-diagram](examples/react-block-diagram). It shows how to:
 
 - create and delete nodes as rectangular obstacles

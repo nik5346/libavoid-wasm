@@ -141,7 +141,9 @@ export class ConnEnd implements Disposable {
   static atPoint(module: LibavoidModule, point: XY, visDirs?: ConnDirFlag): ConnEnd {
     const p = new module.Point(point.x, point.y);
     const handle =
-      visDirs === undefined ? new module.ConnEnd(p) : new module.ConnEnd(p, visDirs);
+      visDirs === undefined
+        ? new module.ConnEnd(p)
+        : module.ConnEnd.atPointWithDirs(p, visDirs as unknown as number);
     p.delete();
     return new ConnEnd(handle);
   }

@@ -8,9 +8,20 @@ import {
   RoutingType,
   Connector,
   Shape,
+  ConnDirFlag,
+  RoutingParameter,
   type LibavoidModule,
   type XY,
 } from 'libavoid-wasm';
+
+const getDirFlag = (side: 'top' | 'bottom' | 'left' | 'right') => {
+  switch (side) {
+    case 'top': return ConnDirFlag.Up;
+    case 'bottom': return ConnDirFlag.Down;
+    case 'left': return ConnDirFlag.Left;
+    case 'right': return ConnDirFlag.Right;
+  }
+};
 
 type Node = {
   id: string;
@@ -47,15 +58,16 @@ type LinkingState = {
 const PORT_SIDES = ['top', 'bottom', 'left', 'right'] as const;
 
 function getPortPosition(node: Node, side: 'top' | 'bottom' | 'left' | 'right'): XY {
+  const padding = 8;
   switch (side) {
     case 'top':
-      return { x: node.x + node.width / 2, y: node.y };
+      return { x: node.x + node.width / 2, y: node.y - padding };
     case 'bottom':
-      return { x: node.x + node.width / 2, y: node.y + node.height };
+      return { x: node.x + node.width / 2, y: node.y + node.height + padding };
     case 'left':
-      return { x: node.x, y: node.y + node.height / 2 };
+      return { x: node.x - padding, y: node.y + node.height / 2 };
     case 'right':
-      return { x: node.x + node.width, y: node.y + node.height / 2 };
+      return { x: node.x + node.width + padding, y: node.y + node.height / 2 };
   }
 }
 
@@ -137,6 +149,8 @@ function App() {
       // Enable orthogonal routing with segment improvements
       r = new Router(mod, RouterFlag.OrthogonalRouting);
       r.setRoutingOption(4, true); // ImproveHyperedgeRoutesMovingAddingAndDeletingJunctions
+      r.setRoutingParameter(RoutingParameter.ShapeBufferDistance, 15);
+      r.setRoutingParameter(RoutingParameter.IdealNudgingDistance, 15);
       routerRef.current = r;
 
       // Create initial nodes
@@ -183,8 +197,8 @@ function App() {
     const id = 'edge_' + Math.random().toString(36).substring(2, 9);
     const srcPos = getPortPosition(srcNode, srcPort);
     const dstPos = getPortPosition(dstNode, dstPort);
-    const srcEnd = ConnEnd.atPoint(mod, srcPos);
-    const dstEnd = ConnEnd.atPoint(mod, dstPos);
+    const srcEnd = ConnEnd.atPoint(mod, srcPos, getDirFlag(srcPort));
+    const dstEnd = ConnEnd.atPoint(mod, dstPos, getDirFlag(dstPort));
 
     const connector = r.addConnector(srcEnd, dstEnd);
     connector.setRoutingType(RoutingType.Orthogonal);
@@ -359,7 +373,7 @@ function App() {
       const srcNode = nodes.find((n) => n.id === linkingState.srcNodeId)!;
       const srcPos = getPortPosition(srcNode, linkingState.srcPortSide);
 
-      const srcEnd = ConnEnd.atPoint(mod, srcPos);
+      const srcEnd = ConnEnd.atPoint(mod, srcPos, getDirFlag(linkingState.srcPortSide));
       const dstEnd = ConnEnd.atPoint(mod, { x, y });
 
       linkingState.previewConnector.setEndpoints(srcEnd, dstEnd);
@@ -391,8 +405,8 @@ function App() {
         const srcPos = getPortPosition(srcNode, edge.sourcePortSide);
         const dstPos = getPortPosition(dstNode, edge.targetPortSide);
 
-        const srcEnd = ConnEnd.atPoint(mod, srcPos);
-        const dstEnd = ConnEnd.atPoint(mod, dstPos);
+        const srcEnd = ConnEnd.atPoint(mod, srcPos, getDirFlag(edge.sourcePortSide));
+        const dstEnd = ConnEnd.atPoint(mod, dstPos, getDirFlag(edge.targetPortSide));
 
         edge.connector.setEndpoints(srcEnd, dstEnd);
 
@@ -441,7 +455,7 @@ function App() {
     const srcPos = getPortPosition(srcNode, portSide);
 
     // Create a temporary connector for real-time preview routing
-    const srcEnd = ConnEnd.atPoint(mod, srcPos);
+    const srcEnd = ConnEnd.atPoint(mod, srcPos, getDirFlag(portSide));
     const dstEnd = ConnEnd.atPoint(mod, { x, y });
 
     const previewConnector = r.addConnector(srcEnd, dstEnd);

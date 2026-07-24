@@ -16,7 +16,6 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
-    "baseUrl": ".",
     "paths": {
       "libavoid-wasm": ["../../dist/index.d.ts"]
     }
